@@ -848,6 +848,52 @@ class Mininet( object ):
         output( '*** Results: %s\n' % result )
         return result
 
+    def iperfSingle( self, hosts=None, udpBw="10M", period=60, port=5001 ):
+        """
+            Run iperf between two hosts using UDP.
+            hosts: list of hosts; if None, uses opposite hosts
+            returns: results two-element array of server and client speeds
+        """
+        if not hosts:
+            return
+        else:
+            assert len( hosts ) == 2
+        client, server = hosts
+        filename = client.name[1:] + ".out"
+        output("*** Iperf: testing bandwidth between ")
+        output("%s and %s\n" % (client.name, server.name))
+        iperfArgs = "iperf -u "
+        bwArgs = "-b " + udpBw +" "
+        logDir = "/home/thebeats/log/"
+        print "***start server***"
+        server.cmd("mkdir -p " + logDir) # if we don't create this directory, iperfmulti won't have mistakes, but there will no logs.
+        server.cmd( iperfArgs + "-s -i 1" + " > " + logDir + filename + "&" )
+        print "***start client***"
+        server.cmd("mkdir -p " + logDir)
+        client.cmd( iperfArgs + "-t " + str(period) + " -c " + server.IP() + " " + bwArgs + " > " + logDir + "client" + filename + "&" )
+
+    def iperfMulti(self, bw, period=60):
+        base_port = 5001
+        server_list = []
+        client_list = [h for h in self.hosts]
+        host_list = []
+        host_list = [h for h in self.hosts]
+
+        cli_outs = []
+        ser_outs = []
+        _len = len(host_list)
+        for i in xrange(0, _len):
+            client = host_list[i]
+            server = client
+            while(server == client):
+                server = random.choice(host_list)
+            server_list.append(server)
+            self.iperfSingle(hosts = [client, server], udpBw=bw, period=period, port=base_port)
+            sleep(.05)
+            base_port += 1
+        sleep(period)
+        print "test has done"
+
     def runCpuLimitTest( self, cpu, duration=5 ):
         """run CPU limit test with 'while true' processes.
         cpu: desired CPU fraction of each host
